@@ -1,4 +1,5 @@
 import os
+import ssl
 from functools import lru_cache
 from pathlib import Path
 
@@ -74,18 +75,33 @@ class Settings(BaseSettings):
         return "localhost" in lower or "127.0.0.1" in lower
 
     @property
+    def database_is_internal(self) -> bool:
+        """Railway private network — SSL usually not required."""
+        lower = self.database_url.lower()
+        return "railway.internal" in lower or ".internal:" in lower
+
+    @property
+    def database_requires_ssl(self) -> bool:
+        if self.database_is_local or self.database_is_internal:
+            return False
+        lower = self.database_url.lower()
+        if "sslmode=disable" in lower:
+            return False
+        return True
+
+    @property
     def asyncpg_connect_args(self) -> dict:
-        """Railway/managed Postgres requires SSL; local docker does not."""
-        if self.database_is_local:
+        """Public/managed Postgres requires TLS; local and Railway internal do not."""
+        if not self.database_requires_ssl:
             return {}
-        return {"ssl": True}
+        return {"ssl": ssl.create_default_context()}
 
     @property
     def alembic_database_url(self) -> str:
         """Sync psycopg URL for Alembic migrations."""
         url = self.resolved_database_url
         sync = url.replace("postgresql+asyncpg://", "postgresql+psycopg://", 1)
-        if self.database_is_local or "sslmode=" in sync:
+        if not self.database_requires_ssl or "sslmode=" in sync:
             return sync
         sep = "&" if "?" in sync else "?"
         return f"{sync}{sep}sslmode=require"
