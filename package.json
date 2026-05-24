@@ -1,0 +1,19 @@
+{
+  "name": "kama",
+  "private": true,
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "dev:infra": "docker compose up -d",
+    "dev:apps": "concurrently -n web,api -c green,yellow \"pnpm --filter web dev\" \"cd backend && uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2"
+  }
+}
