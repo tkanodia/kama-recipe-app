@@ -69,6 +69,28 @@ class Settings(BaseSettings):
         return url
 
     @property
+    def database_is_local(self) -> bool:
+        lower = self.database_url.lower()
+        return "localhost" in lower or "127.0.0.1" in lower
+
+    @property
+    def asyncpg_connect_args(self) -> dict:
+        """Railway/managed Postgres requires SSL; local docker does not."""
+        if self.database_is_local:
+            return {}
+        return {"ssl": True}
+
+    @property
+    def alembic_database_url(self) -> str:
+        """Sync psycopg URL for Alembic migrations."""
+        url = self.resolved_database_url
+        sync = url.replace("postgresql+asyncpg://", "postgresql+psycopg://", 1)
+        if self.database_is_local or "sslmode=" in sync:
+            return sync
+        sep = "&" if "?" in sync else "?"
+        return f"{sync}{sep}sslmode=require"
+
+    @property
     def resolved_google_credentials_path(self) -> str | None:
         """Path to GCP credentials file, writing inline JSON to disk when configured."""
         if self.google_application_credentials:

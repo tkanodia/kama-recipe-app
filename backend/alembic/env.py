@@ -16,10 +16,7 @@ target_metadata = Base.metadata
 def get_sync_url() -> str:
     from app.core.config import get_settings
 
-    url = get_settings().resolved_database_url
-    if url.startswith("postgresql+asyncpg://"):
-        return url.replace("postgresql+asyncpg://", "postgresql+psycopg://", 1)
-    return url
+    return get_settings().alembic_database_url
 
 
 def run_migrations_offline() -> None:
